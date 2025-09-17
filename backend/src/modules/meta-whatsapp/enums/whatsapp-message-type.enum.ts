@@ -1,0 +1,16 @@
+export enum WhatsappMessageType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  DOCUMENT = 'document',
+  AUDIO = 'audio',
+  VIDEO = 'video',
+  STICKER = 'sticker',
+  LOCATION = 'location',
+  CONTACTS = 'contacts',
+  TEMPLATE = 'template',
+  INTERACTIVE = 'interactive',
+  BUTTON = 'button',
+  LIST = 'list',
+  REACTION = 'reaction',
+  SYSTEM = 'system',
+}

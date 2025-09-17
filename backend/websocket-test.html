@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket CRM Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .log { background-color: #f8f9fa; padding: 10px; height: 300px; overflow-y: auto; border: 1px solid #ddd; }
+        .controls { margin: 20px 0; }
+        button { margin: 5px; padding: 10px 15px; }
+        input, select { margin: 5px; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WebSocket CRM Test</h1>
+        
+        <div id="status" class="status disconnected">
+            Desconectado
+        </div>
+
+        <div class="controls">
+            <input type="text" id="tokenInput" placeholder="JWT Token" style="width: 300px;">
+            <button onclick="connect()">Conectar</button>
+            <button onclick="disconnect()">Desconectar</button>
+        </div>
+
+        <div class="controls">
+            <h3>Ações WebSocket:</h3>
+            <input type="number" id="conversationId" placeholder="ID da Conversa" value="1">
+            <button onclick="joinConversation()">Entrar na Conversa</button>
+            <button onclick="leaveConversation()">Sair da Conversa</button>
+        </div>
+
+        <div class="controls">
+            <button onclick="startTyping()">Começar a Digitar</button>
+            <button onclick="stopTyping()">Parar de Digitar</button>
+            <select id="userStatus">
+                <option value="online">Online</option>
+                <option value="away">Away</option>
+                <option value="busy">Busy</option>
+                <option value="offline">Offline</option>
+            </select>
+            <button onclick="setStatus()">Definir Status</button>
+            <button onclick="getPresence()">Obter Presença</button>
+        </div>
+
+        <h3>Log de Eventos:</h3>
+        <div id="log" class="log"></div>
+        <button onclick="clearLog()">Limpar Log</button>
+    </div>
+
+    <script>
+        let socket = null;
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function connect() {
+            const token = document.getElementById('tokenInput').value;
+            
+            if (!token) {
+                alert('Por favor, insira um token JWT válido');
+                return;
+            }
+
+            socket = io('/crm', {
+                auth: {
+                    token: token
+                }
+            });
+
+            socket.on('connect', () => {
+                statusEl.textContent = 'Conectado ✅';
+                statusEl.className = 'status connected';
+                log('✅ <strong>Conectado ao WebSocket</strong>');
+            });
+
+            socket.on('disconnect', () => {
+                statusEl.textContent = 'Desconectado ❌';
+                statusEl.className = 'status disconnected';
+                log('❌ <strong>Desconectado do WebSocket</strong>');
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ <strong>Erro de conexão:</strong> ${error.message}`);
+            });
+
+            // Eventos WebSocket
+            socket.on('joined_conversation', (data) => {
+                log(`🏠 <strong>Entrou na conversa:</strong> ${data.conversationId}`);
+            });
+
+            socket.on('left_conversation', (data) => {
+                log(`🚪 <strong>Saiu da conversa:</strong> ${data.conversationId}`);
+            });
+
+            socket.on('message:new', (data) => {
+                log(`💬 <strong>Nova mensagem:</strong> ID ${data.message?.id || 'N/A'}`);
+            });
+
+            socket.on('message:read', (data) => {
+                log(`👁️ <strong>Mensagem lida:</strong> ID ${data.messageId}, Conversa ${data.conversationId}`);
+            });
+
+            socket.on('user:typing', (data) => {
+                log(`⌨️ <strong>Usuário digitando:</strong> User ${data.userId} na conversa ${data.conversationId}`);
+            });
+
+            socket.on('user:stop_typing', (data) => {
+                log(`⏹️ <strong>Parou de digitar:</strong> User ${data.userId} na conversa ${data.conversationId}`);
+            });
+
+            socket.on('user:online', (data) => {
+                log(`🟢 <strong>Usuário online:</strong> User ${data.userId} (${data.status})`);
+            });
+
+            socket.on('user:offline', (data) => {
+                log(`🔴 <strong>Usuário offline:</strong> User ${data.userId} (${data.status})`);
+            });
+
+            socket.on('user:status_changed', (data) => {
+                log(`🔄 <strong>Status alterado:</strong> User ${data.userId} → ${data.status}`);
+            });
+
+            socket.on('user:presence_data', (data) => {
+                log(`👥 <strong>Dados de presença:</strong> ${data.users.length} usuários online`);
+                data.users.forEach(user => {
+                    log(`&nbsp;&nbsp;&nbsp;- User ${user.userId}: ${user.status} (${user.lastSeen})`);
+                });
+            });
+
+            socket.on('conversation:assigned', (data) => {
+                log(`📋 <strong>Conversa atribuída:</strong> ${data.conversationId} → User ${data.assignedUser || data.assignedBot || 'ninguém'}`);
+            });
+
+            socket.on('conversation:status_changed', (data) => {
+                log(`🔄 <strong>Status da conversa:</strong> ${data.conversationId} de ${data.previousStatus} → ${data.newStatus}`);
+            });
+
+            socket.on('notification', (data) => {
+                log(`🔔 <strong>Notificação:</strong> ${data.title} - ${data.body}`);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+
+        function joinConversation() {
+            if (!socket) return alert('Conecte primeiro!');
+            const conversationId = parseInt(document.getElementById('conversationId').value);
+            socket.emit('join:conversation', { conversationId });
+        }
+
+        function leaveConversation() {
+            if (!socket) return alert('Conecte primeiro!');
+            const conversationId = parseInt(document.getElementById('conversationId').value);
+            socket.emit('leave:conversation', { conversationId });
+        }
+
+        function startTyping() {
+            if (!socket) return alert('Conecte primeiro!');
+            const conversationId = parseInt(document.getElementById('conversationId').value);
+            socket.emit('user:typing', { conversationId });
+        }
+
+        function stopTyping() {
+            if (!socket) return alert('Conecte primeiro!');
+            const conversationId = parseInt(document.getElementById('conversationId').value);
+            socket.emit('user:stop_typing', { conversationId });
+        }
+
+        function setStatus() {
+            if (!socket) return alert('Conecte primeiro!');
+            const status = document.getElementById('userStatus').value;
+            socket.emit('user:set_status', { status });
+        }
+
+        function getPresence() {
+            if (!socket) return alert('Conecte primeiro!');
+            const conversationId = parseInt(document.getElementById('conversationId').value);
+            socket.emit('user:get_presence', { conversationId });
+        }
+
+        function clearLog() {
+            logEl.innerHTML = '';
+        }
+
+        // Instruções iniciais
+        log('🚀 <strong>WebSocket CRM Test carregado</strong>');
+        log('📝 Para testar:');
+        log('1. Insira um token JWT válido');
+        log('2. Clique em "Conectar"');
+        log('3. Use os botões para testar os eventos');
+        log('');
+        log('🔗 <strong>Endpoint:</strong> ws://localhost:3000/crm');
+    </script>
+</body>
+</html>
