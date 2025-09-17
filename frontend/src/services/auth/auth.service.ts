@@ -25,7 +25,7 @@ export const logout = async (): Promise<void> => {
 }
 
 export const getMe = async (): Promise<User> => {
-  return await api.get<User>('/auth/me')
+  return api.get<User>('/auth/me')
 }
 
 export const refreshToken = async (): Promise<{ accessToken: string }> => {

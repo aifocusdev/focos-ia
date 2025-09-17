@@ -1,153 +1,95 @@
 import { create } from 'zustand'
-import { contactService, tagService } from '../services'
-import type { 
-  Contact, 
-  ContactFilters, 
-  Tag, 
-  ContactProfileData 
-} from '../types/contact.types'
+import { getContact, updateContact, addTagsToContact, removeTagsFromContact } from '../services/contact/contact.service'
+import type { Contact } from '../types/conversation.types'
 
-interface ContactState {
-  // Data
-  contacts: Contact[]
-  tags: Tag[]
-  selectedContact: ContactProfileData | null
-  
-  // Pagination and filters
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-  filters: ContactFilters
-  
-  // Loading states
-  loading: boolean
-  tagsLoading: boolean
-  profileLoading: boolean
-  
-  // Error handling
-  error: string | null
-  
-  // Actions
-  fetchContacts: () => Promise<void>
-  fetchTags: () => Promise<void>
-  fetchContactProfile: (contactId: number) => Promise<void>
-  setPage: (page: number) => void
-  setLimit: (limit: number) => void
-  setFilters: (filters: Partial<ContactFilters>) => void
-  clearFilters: () => void
-  setError: (error: string | null) => void
-  clearSelectedContact: () => void
+interface ContactStoreState {
+  contact: Contact | null
+  isLoading: boolean
+  isUpdating: boolean
+  isUpdatingTags: boolean
+  error: Error | null
+  fetchContact: (contactId: string) => Promise<void>
+  updateContactNotes: (contactId: string, notes: string) => Promise<void>
+  updateRemarketingPreference: (contactId: string, acceptsRemarketing: boolean) => Promise<void>
+  updateContactType: (contactId: string, contactType: 'ads' | 'all' | 'support') => Promise<void>
+  addTags: (contactId: string, tagIds: number[]) => Promise<void>
+  removeTags: (contactId: string, tagIds: number[]) => Promise<void>
+  clearContact: () => void
 }
 
-const initialFilters: ContactFilters = {
-  page: 1,
-  limit: 10,
-  include_tags: true
-}
-
-export const useContactStore = create<ContactState>((set, get) => ({
-  // Initial state
-  contacts: [],
-  tags: [],
-  selectedContact: null,
-  total: 0,
-  page: 1,
-  limit: 10,
-  totalPages: 0,
-  filters: initialFilters,
-  loading: false,
-  tagsLoading: false,
-  profileLoading: false,
+export const useContactStore = create<ContactStoreState>((set) => ({
+  contact: null,
+  isLoading: false,
+  isUpdating: false,
+  isUpdatingTags: false,
   error: null,
 
-  // Actions
-  fetchContacts: async () => {
-    const state = get()
-    set({ loading: true, error: null })
-    
+  fetchContact: async (contactId) => {
+    set({ isLoading: true, error: null })
     try {
-      const response = await contactService.getContacts({
-        ...state.filters,
-        page: state.page,
-        limit: state.limit
-      })
-      
-      set({
-        contacts: response.data,
-        total: response.total,
-        totalPages: response.totalPages,
-        page: response.page,
-        limit: response.limit,
-        loading: false
-      })
+      const contactData = await getContact(contactId)
+      set({ contact: contactData, isLoading: false })
     } catch (error) {
-      set({
-        loading: false,
-        error: error instanceof Error ? error.message : 'Erro ao carregar contatos'
-      })
+      set({ error: error as Error, isLoading: false })
     }
   },
 
-  fetchTags: async () => {
-    set({ tagsLoading: true, error: null })
-    
+  updateContactNotes: async (contactId, notes) => {
+    set({ isUpdating: true, error: null })
     try {
-      const tags = await tagService.getAllTags()
-      set({ tags, tagsLoading: false })
+      const updatedContact = await updateContact(contactId, { notes })
+      set({ contact: updatedContact, isUpdating: false })
     } catch (error) {
-      set({
-        tagsLoading: false,
-        error: error instanceof Error ? error.message : 'Erro ao carregar tags'
-      })
+      set({ error: error as Error, isUpdating: false })
+      throw error
     }
   },
 
-  fetchContactProfile: async (contactId: number) => {
-    set({ profileLoading: true, error: null })
-    
+  updateRemarketingPreference: async (contactId, acceptsRemarketing) => {
+    set({ isUpdating: true, error: null })
     try {
-      const profileData = await contactService.getContactProfile(contactId)
-      set({ 
-        selectedContact: profileData,
-        profileLoading: false 
-      })
+      const updatedContact = await updateContact(contactId, { accepts_remarketing: acceptsRemarketing })
+      set({ contact: updatedContact, isUpdating: false })
     } catch (error) {
-      set({
-        profileLoading: false,
-        error: error instanceof Error ? error.message : 'Erro ao carregar perfil do contato'
-      })
+      set({ error: error as Error, isUpdating: false })
+      throw error
     }
   },
 
-  setPage: (page: number) => {
-    set({ page })
+  updateContactType: async (contactId, contactType) => {
+    set({ isUpdating: true, error: null })
+    try {
+      const updatedContact = await updateContact(contactId, { contact_type: contactType })
+      set({ contact: updatedContact, isUpdating: false })
+    } catch (error) {
+      set({ error: error as Error, isUpdating: false })
+      throw error
+    }
   },
 
-  setLimit: (limit: number) => {
-    set({ limit, page: 1 })
+  addTags: async (contactId, tagIds) => {
+    set({ isUpdatingTags: true, error: null })
+    try {
+      const updatedContact = await addTagsToContact(contactId, tagIds)
+      set({ contact: updatedContact, isUpdatingTags: false })
+    } catch (error) {
+      set({ error: error as Error, isUpdatingTags: false })
+      throw error
+    }
   },
 
-  setFilters: (newFilters: Partial<ContactFilters>) => {
-    const state = get()
-    set({
-      filters: { ...state.filters, ...newFilters },
-      page: 1 // Reset page when filters change
-    })
+  removeTags: async (contactId, tagIds) => {
+    set({ isUpdatingTags: true, error: null })
+    try {
+      const updatedContact = await removeTagsFromContact(contactId, tagIds)
+      set({ contact: updatedContact, isUpdatingTags: false })
+    } catch (error) {
+      set({ error: error as Error, isUpdatingTags: false })
+      throw error
+    }
   },
 
-  clearFilters: () => {
-    set({
-      filters: initialFilters,
-      page: 1
-    })
-  },
-
-  setError: (error: string | null) => {
-    set({ error })
-  },
-
-  clearSelectedContact: () => {
-    set({ selectedContact: null })
+  clearContact: () => {
+    set({ contact: null, error: null })
   }
 }))

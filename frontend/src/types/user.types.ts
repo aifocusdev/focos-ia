@@ -1,55 +1,35 @@
 export interface User {
-  id: number
-  name: string
+  id: string
   username: string
-  role_id: number
-  contact_type_preference: 'ads' | 'all' | 'support'
-  contact_type_restriction: boolean
-  created_at: string
-  updated_at: string
-  role?: {
-    id: number
-    name: string
-  }
-}
-
-export interface CreateUser {
-  name: string
-  username: string
-  password: string
-  role_id: number
+  role: string
+  name?: string // Optional field for display name
+  email?: string
+  createdAt?: string
+  updatedAt?: string
   contact_type_preference: 'ads' | 'all' | 'support'
   contact_type_restriction: boolean
 }
-
-export interface UpdateUser {
-  name?: string
-  username?: string
-  password?: string
-  role_id?: number
-  contact_type_preference?: 'ads' | 'all' | 'support'
-  contact_type_restriction?: boolean
-}
-
-export interface UserFilters {
-  page?: number
-  limit?: number
-  name?: string
-  username?: string
-  role_id?: number
-}
-
-export interface PaginatedResponse<T> {
-  data: T[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
-
-export type UserResponse = PaginatedResponse<User>
 
 export interface Role {
   id: number
   name: string
+  created_at: string
+  last_activity_at: string
+}
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface LoginResponse {
+  accessToken: string
+  user: User
+}
+
+export enum UserStatus {
+  ONLINE = 'online',
+  OFFLINE = 'offline',
+  AWAY = 'away',
+  BUSY = 'busy'
 }

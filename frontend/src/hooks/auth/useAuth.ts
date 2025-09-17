@@ -1,4 +1,6 @@
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
+import { getUserDisplayName } from '../../utils/user';
 
 /**
  * Custom hook for authentication functionality
@@ -6,6 +8,20 @@ import { useAuthStore } from '../../stores/authStore';
  */
 export const useAuth = () => {
   const authStore = useAuthStore();
+  const { setLoading } = useUIStore();
+
+  const login = async (username: string, password: string) => {
+    setLoading('auth-login', true);
+    try {
+      await authStore.login(username, password);
+    } finally {
+      setLoading('auth-login', false);
+    }
+  };
+
+  const logout = () => {
+    authStore.logout();
+  };
 
   return {
     // State
@@ -15,14 +31,14 @@ export const useAuth = () => {
     error: authStore.error,
 
     // Actions
-    login: authStore.login,
-    logout: authStore.logout,
+    login,
+    logout,
     setError: authStore.setError,
     clearError: authStore.clearError,
 
     // Computed
-    isAdmin: authStore.user?.role_id === 1,
-    isAgent: authStore.user?.role_id === 2,
-    userName: authStore.user?.name || 'Usuário',
+    isAdmin: authStore.user?.role === 'admin',
+    isAgent: authStore.user?.role === 'agent' || authStore.user?.role === 'employer',
+    userName: authStore.user ? getUserDisplayName(authStore.user) : 'Usuário',
   };
 };

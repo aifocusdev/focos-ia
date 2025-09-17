@@ -123,7 +123,7 @@ const LoginPage: React.FC = () => {
           {/* Footer */}
           <div className="text-center mt-8 pt-6 border-t border-dark-600">
             <p className="text-xs text-gray-400">
-              © 2025 FOCOS IA - Sistema de CRM
+              © 2025 ApiCeChat - Sistema de CRM
             </p>
           </div>
         </div>

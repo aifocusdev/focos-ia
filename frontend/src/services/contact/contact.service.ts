@@ -1,68 +1,38 @@
 import { api } from '../api'
-import type { 
-  Contact, 
-  ContactResponse, 
-  ContactFilters, 
-  ContactUserAccount, 
-  ContactProfileData 
-} from '../../types/contact.types'
+import type { Contact } from '../../types/conversation.types'
 
-class ContactService {
-  private readonly baseUrl = '/contacts'
-
-  async getContacts(filters: ContactFilters = {}): Promise<ContactResponse> {
-    const params = new URLSearchParams()
-    
-    if (filters.page !== undefined) {
-      params.append('page', filters.page.toString())
-    }
-    if (filters.limit !== undefined) {
-      params.append('limit', filters.limit.toString())
-    }
-    if (filters.search) {
-      params.append('search', filters.search)
-    }
-    if (filters.external_id) {
-      params.append('external_id', filters.external_id)
-    }
-    if (filters.tag_ids && filters.tag_ids.length > 0) {
-      filters.tag_ids.forEach(tagId => {
-        params.append('tag_ids', tagId.toString())
-      })
-    }
-    if (filters.include_tags !== undefined) {
-      params.append('include_tags', filters.include_tags.toString())
-    }
-    if (filters.date_exp_from) {
-      params.append('date_exp_from', filters.date_exp_from)
-    }
-    if (filters.date_exp_to) {
-      params.append('date_exp_to', filters.date_exp_to)
-    }
-
-    const url = params.toString() ? `${this.baseUrl}?${params}` : this.baseUrl
-    return api.get<ContactResponse>(url)
-  }
-
-  async getContactById(id: number): Promise<Contact> {
-    return api.get<Contact>(`${this.baseUrl}/${id}`)
-  }
-
-  async getContactUserAccounts(contactId: number): Promise<ContactUserAccount[]> {
-    return api.get<ContactUserAccount[]>(`/contact-user-accounts/contact/${contactId}`)
-  }
-
-  async getContactProfile(contactId: number): Promise<ContactProfileData> {
-    const [contact, userAccounts] = await Promise.all([
-      this.getContactById(contactId),
-      this.getContactUserAccounts(contactId)
-    ])
-
-    return {
-      contact,
-      userAccounts
-    }
-  }
+export interface UpdateContactData {
+  notes?: string
+  name?: string
+  phone_number?: string
+  external_id?: string
+  accepts_remarketing?: boolean
+  contact_type?: 'ads' | 'all' | 'support'
 }
 
-export const contactService = new ContactService()
+export const getContact = async (contactId: string): Promise<Contact> => {
+  return await api.get<Contact>(`/contacts/${contactId}`)
+}
+
+export const updateContact = async (
+  contactId: string,
+  data: UpdateContactData
+): Promise<Contact> => {
+  return await api.patch<Contact>(`/contacts/${contactId}`, data)
+}
+
+export const addTagsToContact = async (
+  contactId: string,
+  tagIds: number[]
+): Promise<Contact> => {
+  return await api.post<Contact>(`/contacts/${contactId}/tags`, { tag_ids: tagIds })
+}
+
+export const removeTagsFromContact = async (
+  contactId: string,
+  tagIds: number[]
+): Promise<Contact> => {
+  return await api.delete<Contact>(`/contacts/${contactId}/tags`, { 
+    data: { tag_ids: tagIds } 
+  })
+}

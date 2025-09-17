@@ -1,30 +1,46 @@
 import { api } from '../api'
-import type { Tag, TagResponse, TagFilters } from '../../types/contact.types'
+import type { 
+  Tag, 
+  TagListResponse, 
+  TagListParams, 
+  CreateTagRequest, 
+  UpdateTagRequest 
+} from '../../types/tag.types'
 
 class TagService {
-  private readonly baseUrl = '/tags'
-
-  async getTags(filters: TagFilters = {}): Promise<TagResponse> {
-    const params = new URLSearchParams()
+  async getTags(params: TagListParams = {}): Promise<TagListResponse> {
+    const queryParams = new URLSearchParams()
     
-    if (filters.page !== undefined) {
-      params.append('page', filters.page.toString())
+    if (params.page) {
+      queryParams.append('page', params.page.toString())
     }
-    if (filters.limit !== undefined) {
-      params.append('limit', filters.limit.toString())
+    if (params.limit) {
+      queryParams.append('limit', params.limit.toString())
     }
-    if (filters.search) {
-      params.append('search', filters.search)
+    if (params.search) {
+      queryParams.append('search', params.search)
     }
-
-    const url = params.toString() ? `${this.baseUrl}?${params}` : this.baseUrl
-    return api.get<TagResponse>(url)
+    
+    const queryString = queryParams.toString()
+    const url = queryString ? `/tags?${queryString}` : '/tags'
+    
+    return await api.get<TagListResponse>(url)
   }
 
-  async getAllTags(): Promise<Tag[]> {
-    // Busca todas as tags sem paginação (limit alto)
-    const response = await this.getTags({ limit: 2000 })
-    return response.data
+  async getTag(id: number): Promise<Tag> {
+    return await api.get<Tag>(`/tags/${id}`)
+  }
+
+  async createTag(data: CreateTagRequest): Promise<Tag> {
+    return await api.post<Tag>('/tags', data)
+  }
+
+  async updateTag(id: number, data: UpdateTagRequest): Promise<Tag> {
+    return await api.patch<Tag>(`/tags/${id}`, data)
+  }
+
+  async deleteTag(id: number): Promise<void> {
+    await api.delete(`/tags/${id}`)
   }
 }
 
